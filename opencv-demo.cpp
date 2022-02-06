@@ -231,18 +231,30 @@ public:
         target_points[0].y = 51.6963;
         target_points[1].x = 73.5318;
         target_points[1].y = 51.5014;
+        target_points[2].x = 56.0252;
+        target_points[2].y = 71.7366;
+        target_points[3].x = 41.5493;
+        target_points[3].y = 92.3655;
+        target_points[4].x = 70.7299;
+        target_points[4].y = 92.2041;
 
         FaceResults tmp_face_result;
         Mat ori_img = imread(image_name);
         detect_module.get_face(ori_img, tmp_face_result);
         assert(tmp_face_result.face_location.size() == 1);
         detect_result tmp_box = tmp_face_result.face_location[0];
-        point cur_points[2];
+        point cur_points[5];
         cur_points[0].x = tmp_box.landmark[0];
         cur_points[0].y = tmp_box.landmark[1];
         cur_points[1].x = tmp_box.landmark[2];
         cur_points[1].y = tmp_box.landmark[3];
-        get_inv_affine_matrix(cur_points, target_points, affine_matrix);
+        cur_points[2].x = tmp_box.landmark[4];
+        cur_points[2].y = tmp_box.landmark[5];
+        cur_points[3].x = tmp_box.landmark[6];
+        cur_points[3].y = tmp_box.landmark[7];
+        cur_points[4].x = tmp_box.landmark[8];
+        cur_points[4].y = tmp_box.landmark[9];
+
 
         label_img = Mat(input_infos[0].u32Width, input_infos[0].u32Height, CV_8UC3);
 
@@ -257,7 +269,9 @@ public:
         tmp_img.image_attr = input_infos[0];
         tmp_img.image = label_img.data;
 
-        inv_warp_affine(tmp_img_ori, tmp_img, affine_matrix);
+        get_roi(cur_points, tmp_img, tmp_img_ori, tmp_box);
+        //get_inv_affine_matrix(cur_points, target_points, affine_matrix);
+        //inv_warp_affine(tmp_img_ori, tmp_img, affine_matrix);
 
         input_imgs.push_back(tmp_img);
 
@@ -267,8 +281,6 @@ public:
         label_id.dims = tmp_label_id->dims;
         label_id.face_id = new NCE_F32[label_id.dims];
         memcpy(label_id.face_id, tmp_label_id->face_id, sizeof(float) * label_id.dims);
-        printf("111\n");
-
     }
 
     ~FaceRec()
@@ -287,15 +299,22 @@ public:
         for (int i = 0; i < face_results.face_location.size(); i++)
         {
             detect_result box = face_results.face_location[i];
-            point cur_points[2];
+            point cur_points[5];
 
             cur_points[0].x = box.landmark[0];
             cur_points[0].y = box.landmark[1];
             cur_points[1].x = box.landmark[2];
             cur_points[1].y = box.landmark[3];
+            cur_points[2].x = box.landmark[4];
+            cur_points[2].y = box.landmark[5];
+            cur_points[3].x = box.landmark[6];
+            cur_points[3].y = box.landmark[7];
+            cur_points[4].x = box.landmark[8];
+            cur_points[4].y = box.landmark[9];
 
-            get_inv_affine_matrix(cur_points, target_points, affine_matrix);
-            inv_warp_affine(tmp_input_img, input_imgs[0], affine_matrix);
+            get_roi(cur_points, input_imgs[0], tmp_input_img, box);
+            //get_inv_affine_matrix(cur_points, target_points, affine_matrix);
+            //inv_warp_affine(tmp_input_img, input_imgs[0], affine_matrix);
             Mat tmp(input_imgs[0].image_attr.u32Width, input_imgs[0].image_attr.u32Height, CV_8UC3, input_imgs[0].image);
             imshow("tmp", tmp);
             p_rec_machine->nce_alg_inference(input_imgs);
@@ -321,7 +340,7 @@ private:
     Mat label_img;
     Mat cur_img;
 
-    point target_points[2];
+    point target_points[5];
     unique_ptr<nce_alg_machine> p_rec_machine;
     FaceID label_id;
     FaceID cur_id;
@@ -350,6 +369,54 @@ private:
             tmp += lhs[i] * rhs[i];
 
         return tmp / (getMold_c(lhs, dims) * getMold_c(rhs, dims));
+    }
+
+    int get_roi(point cur_points[5], img_t& tmp_img, img_t & tmp_img_ori, detect_result roi_bbox)
+    {
+        //Point2f src[4];
+        //Point2f dst[4];
+
+        //src[0].x = cur_points[3].x;
+        //src[0].y = cur_points[3].y;
+        //src[1].x = cur_points[4].x;
+        //src[1].y = cur_points[4].y;
+        ////src[2].x = cur_points[2].x;
+        ////src[2].y = cur_points[2].y;
+        //src[2].x = cur_points[0].x;
+        //src[2].y = cur_points[0].y;
+        //src[3].x = cur_points[1].x;
+        //src[3].y = cur_points[1].y;
+
+        //dst[0].x = target_points[3].x;
+        //dst[0].y = target_points[3].y;
+        //dst[1].x = target_points[4].x;
+        //dst[1].y = target_points[4].y;
+        ////dst[2].x = target_points[2].x;
+        ////dst[2].y = target_points[2].y;
+        //dst[2].x = target_points[0].x;
+        //dst[2].y = target_points[0].y;
+        //dst[3].x = target_points[1].x;
+        //dst[3].y = target_points[1].y;
+
+        //Mat M = getAffineTransform(src, dst);
+
+        //Mat src_img(tmp_img_ori.image_attr.u32Height, tmp_img_ori.image_attr.u32Width, CV_8UC3, tmp_img_ori.image);
+        //Mat dst_img;
+        //for (int i = 0; i < 5; i++)
+        //{
+        //    circle(src_img, src[i], 10, Scalar(0, 0, 255));
+        //}
+        //warpAffine(src_img, dst_img, M, Size(112, 112));
+        //memcpy(tmp_img.image, dst_img.data, dst_img.cols * dst_img.rows * 3 * sizeof(NCE_U8));
+
+        get_inv_affine_matrix(cur_points, target_points, affine_matrix);
+        inv_warp_affine(tmp_img_ori, tmp_img, affine_matrix);
+
+        //Mat ori_img(tmp_img_ori.image_attr.u32Height, tmp_img_ori.image_attr.u32Width, CV_8UC3, tmp_img_ori.image);
+        //Mat roi(ori_img, Rect(roi_bbox.x1, roi_bbox.y1, roi_bbox.x2 - roi_bbox.x1, roi_bbox.y2 - roi_bbox.y1));
+        //resize(roi, roi, Size(tmp_img.image_attr.u32Width, tmp_img.image_attr.u32Height));
+        //memcpy(tmp_img.image, roi.data, roi.cols * roi.rows * 3 * sizeof(NCE_U8));
+        return 0;
     }
 
 };
