@@ -1,0 +1,4 @@
+build/*
+build_release/*
+test_warp_affine/*
+lib/*
